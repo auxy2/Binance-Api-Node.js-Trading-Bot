@@ -20,7 +20,8 @@ app.get("/run", (req, res, next) => {
     const markets = await binanceClient.loadMarkets();
 
     for (const keys of markets) {
-      console.log("Binance Api inteegration", keys);
+      const symbolFData = keys[symbol];
+      console.log("Binance Api inteegration", symbolFData.symbol);
     }
     // console.log("Binance Api inteegration", markets);
     res.status(200).send(markets);
