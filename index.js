@@ -19,7 +19,7 @@ app.get("/run", (req, res, next) => {
     const { asset, base, allocation, spred } = config;
     const markets = await binanceClient.loadMarkets();
 
-    console.log(markets);
+    console.log("Binance Api inteegration", markets);
     res.status(200).send(markets);
 
     const market = "BTC/USD";
