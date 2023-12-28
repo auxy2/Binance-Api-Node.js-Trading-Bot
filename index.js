@@ -4,8 +4,6 @@ const ccxt = require("ccxt");
 const axios = require("axios");
 const { config } = require("dotenv");
 
-
-
 dontenv.config();
 
 const app = express();
@@ -75,7 +73,10 @@ const run = () => {
   setInterval(tick, config.tickInterval, config, binanceClient);
 };
 
-run();
+app.get("/run", (req, res, next) => {
+  run();
+  next();
+});
 
 app.listen(port, () => [
   console.log(`Bot has started runing on this port ${port}`),
