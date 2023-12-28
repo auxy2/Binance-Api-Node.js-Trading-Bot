@@ -4,6 +4,8 @@ const ccxt = require("ccxt");
 const axios = require("axios");
 const { config } = require("dotenv");
 
+
+
 dontenv.config();
 
 const app = express();
