@@ -19,13 +19,12 @@ app.get("/run", (req, res, next) => {
     const { asset, base, allocation, spred } = config;
     const markets = await binanceClient.loadMarkets();
 
-    const market = "BTC/USD";
-    const orders = await binanceClient.fetchOpenOrders(market);
-    console.log("orders", orders);
-
     console.log(markets);
     res.status(200).send(markets);
 
+    const market = "BTC/USD";
+    const orders = await binanceClient.fetchOpenOrders(market);
+    console.log("orders", orders);
     orders.forEach(async (order) => {
       await binanceClient.canceleOrder(order.id);
     });
