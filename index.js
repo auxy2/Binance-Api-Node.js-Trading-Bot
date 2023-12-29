@@ -9,31 +9,33 @@ dontenv.config();
 const app = express();
 const port = process.env.PORT;
 
-app.get("/run", (req, res, next) => {
-  const binanceClient = new ccxt.binance({
-    apiKey: process.env.API_KEY,
-    secrete: process.env.API_SECERETE,
+// app.get("/run", (req, res, next) => {
+const binanceClient = new ccxt.binance({
+  apiKey: process.env.API_KEY,
+  secret: process.env.API_SECRET,
+});
+
+const confg = {
+  asset: "BTC",
+  base: "USDT",
+  allocation: 0.1,
+  spred: 0.2,
+  tickInterval: 20000,
+};
+
+const tick = async () => {
+  const { asset, base, allocation, spred } = confg;
+
+  // console.log("Binance Api inteegration", markets);
+  let marketPrice;
+  const market = `${asset}/${base}`;
+  const orders = await binanceClient.fetchOpenOrders(market);
+  console.log("orders", orders);
+  orders.forEach(async (order) => {
+    await binanceClient.canceleOrder(order.id);
   });
-
-  const tick = async () => {
-    const { asset, base, allocation, spred } = config;
-    const markets = await binanceClient.loadMarkets();
-
-    for (const keys of markets) {
-      const symbolFData = keys[symbol];
-      console.log("Binance Api inteegration", symbolFData.symbol);
-    }
-    // console.log("Binance Api inteegration", markets);
-    res.status(200).send(markets);
-
-    const market = "BTC/USD";
-    const orders = await binanceClient.fetchOpenOrders(market);
-    console.log("orders", orders);
-    orders.forEach(async (order) => {
-      await binanceClient.canceleOrder(order.id);
-    });
-
-    const results = await promise.all([
+  try {
+    const results = await Promise.all([
       axios.get(
         "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
       ),
@@ -42,48 +44,45 @@ app.get("/run", (req, res, next) => {
       ),
     ]);
 
-    const marketPrice =
-      results[0].data.bitcoin.usd / results[1].data.tether.usd;
+    marketPrice = results[0].data.bitcoin.usd / results[1].data.tether.usd;
+  } catch (err) {
+    console.log(err.message);
+  }
+  const sellprice = marketPrice * (1 + spred);
+  const buyPrice = marketPrice * (1 - spred);
+  const balanc = await binanceClient.fetchBalance();
+  const balance = 0.00345;
+  console.log("balance", balance);
+  const assetBalance = balance; //balance.BTC.free;
+  console.log(assetBalance);
+  const baseBalance = 500; //balance.USDT.free;
+  console.log(baseBalance);
 
-    const sellprice = marketPrice * (1 + spred);
-    const buyPrice = marketPrice * (1 - spred);
-    const balance = await binanceClient.fetchBalance();
-    const assetBalance = balance.free[asset];
-    const baseBalance = balance.free[base];
+  const sellVolume = assetBalance * allocation;
+  const buyVolume = (baseBalance * allocation) / marketPrice;
+  console.log("sellVolume", sellVolume, allocation, buyPrice);
 
-    const sellVolume = assetBalance * allocation;
-    const buyVolume = (baseBalance * allocation) / marketPrice;
+  await binanceClient.createLimitSellOrder(market, sellVolume, sellprice);
+  await binanceClient.createLimiteBuyOrder(market, buyVolume, buyPrice);
 
-    await binanceClient.createLimiteSellOrder(market, sellVolume, buyPrice);
-    await binanceClient.createLimiteBuyOrder(market, sellVolume, buyPrice);
-
-    console.log(`
+  console.log(`
     Next tick for ${market}....\n
     Create Limit Sellorder for ${sellVolume} at ${sellprice}.\n
     Create Limit Buy Order for ${buyVolume} at ${buyPrice}.
     `);
-  };
+};
 
-  const run = () => {
-    const config = {
-      asset: "BTC",
-      base: "USDT",
-      allocation: 0.1,
-      spred: 0.2,
-      tickInterval: 20000,
-    };
+const run = () => {
+  const binanceClient = new ccxt.binance({
+    apiKey: process.env.API_KEY,
+    secret: process.env.API_SECERETE,
+  });
+  tick(confg, binanceClient);
 
-    const binanceClient = new ccxt.binance({
-      apiKey: process.env.API_KEY,
-      secrete: process.env.API_SECERETE,
-    });
+  setInterval(tick, confg.tickInterval, config, binanceClient);
+};
 
-    tick(config, binanceClient);
-    setInterval(tick, config.tickInterval, config, binanceClient);
-  };
-
-  run();
-});
+run();
 
 app.listen(port, () => [
   console.log(`Bot has started runing on this port ${port}`),
